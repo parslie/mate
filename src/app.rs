@@ -3,14 +3,18 @@ use std::{io, time::Duration};
 use crossterm::event::{self, Event, KeyModifiers, KeyCode};
 use tui::{Terminal, backend::Backend, Frame, widgets::Paragraph};
 
-fn render<B: Backend>(frame: &mut Frame<B>, text: &String) {
+use self::unicode::UnicodeString;
+
+pub mod unicode;
+
+fn render<B: Backend>(frame: &mut Frame<B>, text: &UnicodeString) {
     let paragraph = Paragraph::new(text.as_str());
     frame.render_widget(paragraph, frame.size());
 }
 
 pub fn run<B: Backend>(terminal: &mut Terminal<B>) -> io::Result<()> {
     let poll_duration = Duration::from_millis(500);
-    let text = String::from("This is text.");
+    let text = UnicodeString::from("This is text.");
 
     loop {
         terminal.draw(|frame| render(frame, &text))?;
@@ -23,4 +27,8 @@ pub fn run<B: Backend>(terminal: &mut Terminal<B>) -> io::Result<()> {
             }
         }
     }
+}
+
+pub fn test() {
+    assert!(UnicodeString::test());
 }
