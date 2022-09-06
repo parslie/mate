@@ -29,6 +29,7 @@ pub fn run<B: Backend>(terminal: &mut Terminal<B>) -> io::Result<()> {
     }
 }
 
+#[cfg(debug_assertions)]
 pub fn test() {
     assert!(UnicodeString::test());
 }

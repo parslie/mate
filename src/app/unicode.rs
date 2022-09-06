@@ -72,6 +72,8 @@ impl UnicodeString {
     pub fn as_str(&self) -> &str {
         return self.inner_string.as_str();
     }
+
+    #[cfg(debug_assertions)]
     pub fn test() -> bool {
         let string = UnicodeString::new();
         if string.as_str() != "" || string.length() != 0 {
