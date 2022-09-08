@@ -38,6 +38,12 @@ impl UnicodeString {
         self.length += 1;
     }
 
+    pub fn push_str(&mut self, s: &str) {
+        for ch in s.chars() {
+            self.push(ch);
+        }
+    }
+
     pub fn insert(&mut self, idx: usize, ch: char) {
         assert!(idx <= self.length);
 
