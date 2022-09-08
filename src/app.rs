@@ -5,7 +5,7 @@ use tui::{Terminal, backend::Backend, Frame, widgets::Paragraph, text::{Text, Sp
 
 use self::unicode::UnicodeString;
 
-pub mod unicode;
+mod unicode;
 
 fn render<B: Backend>(frame: &mut Frame<B>, lines: &Vec<UnicodeString>) {
     let mut lines_spans = Vec::new();
@@ -39,7 +39,11 @@ pub fn run<B: Backend>(terminal: &mut Terminal<B>) -> io::Result<()> {
                     .expect("should never index a line out-of-bounds");
 
                 if key.code == KeyCode::Enter {
-                    // TODO: implement UnicodeString::drain first
+                    target_char = target_char.clamp(0, curr_line.length());
+                    let line_suffix: String = curr_line.drain(target_char, curr_line.length()).collect();
+                    lines.insert(target_line + 1, UnicodeString::from(line_suffix.as_str()));
+                    target_char = 0;
+                    target_line += 1;
                 } else if key.code == KeyCode::Backspace {
                     target_char = target_char.clamp(0, curr_line.length());
                     if target_char > 0 {

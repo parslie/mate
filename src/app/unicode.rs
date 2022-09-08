@@ -1,3 +1,5 @@
+use std::string::Drain;
+
 pub struct UnicodeString {
     inner_string: String,
     length: usize,
@@ -75,6 +77,32 @@ impl UnicodeString {
         self.length -= 1;
     }
 
+    pub fn drain(&mut self, start: usize, end: usize) -> Drain {
+        assert!(start <= end);
+        assert!(start <= self.length);
+        assert!(end <= self.length);
+        
+        if start == end {
+            return self.inner_string.drain(0..0);
+        } else {
+            let inner_start = self.inner_indices[start];
+            let inner_end = if end == self.length {
+                self.inner_string.len()
+            } else {
+                self.inner_indices[end]
+            };
+
+            let removed_bytes = inner_end - inner_start;
+            self.inner_indices.drain(start..end);
+            for inner_idx in &mut self.inner_indices[start..] {
+                *inner_idx -= removed_bytes;
+            }
+
+            self.length -= end - start;
+            return self.inner_string.drain(inner_start..inner_end);
+        }
+    }
+
     pub fn as_str(&self) -> &str {
         return self.inner_string.as_str();
     }
@@ -126,6 +154,21 @@ impl UnicodeString {
 
         string.remove(1); // test removing unicode in middle
         if string.as_str() != "åö" || string.inner_indices != vec![0, 'å'.len_utf8()] {
+            return false;
+        }
+
+        let drained: String = string.drain(0, string.length()).collect(); // test draining all characters
+        if drained.as_str() != "åö" || string.as_str() != "" || string.inner_indices != Vec::new() || string.length() != 0 {
+            return false;
+        } 
+
+        string.push_str("asd"); // test pushing string literal
+        if string.as_str() != "asd" || string.length() != 3 {
+            return false;
+        }
+
+        let drained: String = string.drain(1, string.length()).collect(); // test draining some characters
+        if drained.as_str() != "sd" || string.as_str() != "a" || string.inner_indices != vec![0] || string.length() != 1 {
             return false;
         }
         
