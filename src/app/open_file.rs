@@ -19,9 +19,13 @@ impl OpenFile {
         };
     }
 
-    pub fn clamped_target_char(&self) -> usize {
+    fn clamped_target_char(&self) -> usize {
         let curr_line = self.lines.get(self.target_line).expect("should never index outside of line vector");
         return self.target_char.clamp(0, curr_line.length());
+    }
+
+    pub fn target_pos(&self) -> (usize, usize) {
+        return (self.clamped_target_char(), self.target_line);
     }
 
     pub fn write_character(&mut self, ch: char) {
@@ -79,5 +83,30 @@ impl OpenFile {
             lines_spans.push(Spans::from(line.as_str()));
         }
         return Text::from(lines_spans);
+    }
+
+    pub fn move_target_up(&mut self) {
+        if self.target_line > 0 {
+            self.target_line -= 1;
+        }
+    }
+
+    pub fn move_target_down(&mut self) {
+        if self.target_line < self.lines.len() - 1 {
+            self.target_line += 1;
+        }
+    }
+
+    pub fn move_target_left(&mut self) {
+        if self.target_char > 0 {
+            self.target_char -= 1;
+        }
+    }
+
+    pub fn move_target_right(&mut self) {
+        let curr_line = self.lines.get(self.target_line).expect("should never index outside of line vector");
+        if self.target_char < curr_line.length() {
+            self.target_char += 1;
+        }
     }
 }
