@@ -98,6 +98,7 @@ impl OpenFile {
     }
 
     pub fn move_target_left(&mut self) {
+        self.target_char = self.clamped_target_char();
         if self.target_char > 0 {
             self.target_char -= 1;
         }
