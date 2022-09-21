@@ -1,12 +1,13 @@
-use tui::text::{Text, Spans};
+use tui::{text::{Text, Spans}, layout::Rect};
 
 use super::unicode::UnicodeString;
 
 pub struct OpenFile {
     name: Option<UnicodeString>,
     lines: Vec<UnicodeString>,
-    target_char: usize,
-    target_line: usize,
+    global_cursor_pos: (u16, u16),
+    local_cursor_pos: (usize, usize),
+    viewport_offset: (usize, usize),
 }
 
 impl OpenFile {
@@ -14,100 +15,148 @@ impl OpenFile {
         return Self {
             name: None,
             lines: vec![UnicodeString::new()],
-            target_char: 0,
-            target_line: 0,
+            global_cursor_pos: (0, 0),
+            local_cursor_pos: (0, 0),
+            viewport_offset: (0, 0),
         };
     }
 
-    fn clamped_target_char(&self) -> usize {
-        let curr_line = self.lines.get(self.target_line).expect("should never index outside of line vector");
-        return self.target_char.clamp(0, curr_line.length());
+    pub fn write_character(&mut self, area: Rect, ch: char) {
+        self.local_cursor_pos = self.clamped_local_cursor();
+        let curr_line = self.lines.get_mut(self.local_cursor_pos.1).expect("should never index outside of line vector");
+        curr_line.insert(self.local_cursor_pos.0, ch);
+        self.move_target_right(area);
     }
 
-    pub fn target_pos(&self) -> (usize, usize) {
-        return (self.clamped_target_char(), self.target_line);
-    }
-
-    pub fn write_character(&mut self, ch: char) {
-        self.target_char = self.clamped_target_char();
-
-        let curr_line = self.lines.get_mut(self.target_line).expect("should never index outside of line vector");
-        curr_line.insert(self.target_char, ch);
-        self.target_char += 1;
-    }
-
-    pub fn remove_character(&mut self, before: bool) {
-        self.target_char = self.clamped_target_char();
+    pub fn remove_character(&mut self, area: Rect, before: bool) {
+        self.local_cursor_pos = self.clamped_local_cursor();
 
         match before {
             true => {
-                if self.target_char > 0 {
-                    let curr_line = self.lines.get_mut(self.target_line).expect("should never index outside of line vector");
-                    curr_line.remove(self.target_char - 1);
-                    self.target_char -= 1;
-                } else if self.target_line > 0 {
-                    let curr_line = self.lines.remove(self.target_line);
-                    let prev_line = self.lines.get_mut(self.target_line - 1).expect("should never index outside of line vector");
-                    self.target_char = prev_line.length();
-                    self.target_line -= 1;
+                if self.local_cursor_pos.0 > 0 {
+                    let curr_line = self.lines.get_mut(self.local_cursor_pos.1).expect("should never index outside of line vector");
+                    curr_line.remove(self.local_cursor_pos.0 - 1);
+                    self.move_target_left(area);
+                } else if self.local_cursor_pos.1 > 0 {
+                    self.move_target_left(area);
+                    let curr_line = self.lines.remove(self.local_cursor_pos.1 + 1);
+                    let prev_line = self.lines.get_mut(self.local_cursor_pos.1).expect("should never index outside of line vector");
                     prev_line.push_str(curr_line.as_str());
                 }
             }
             false => {
-                let curr_line = self.lines.get_mut(self.target_line).expect("should never index outside of line vector");
+                let curr_line = self.lines.get_mut(self.local_cursor_pos.1).expect("should never index outside of line vector");
 
-                if self.target_char < curr_line.length() {
-                    curr_line.remove(self.target_char);
-                } else if self.target_line < self.lines.len() - 1 {
-                    let next_line = self.lines.remove(self.target_line + 1);
-                    let curr_line = self.lines.get_mut(self.target_line).expect("should never index outside of line vector");
+                if self.local_cursor_pos.0 < curr_line.length() {
+                    curr_line.remove(self.local_cursor_pos.0);
+                } else if self.local_cursor_pos.1 < self.lines.len() - 1 {
+                    let next_line = self.lines.remove(self.local_cursor_pos.1 + 1);
+                    let curr_line = self.lines.get_mut(self.local_cursor_pos.1).expect("should never index outside of line vector");
                     curr_line.push_str(next_line.as_str());
                 }
             }
         }
     }
 
-    pub fn break_line(&mut self) {
-        self.target_char = self.clamped_target_char();
+    pub fn break_line(&mut self, area: Rect) {
+        self.local_cursor_pos = self.clamped_local_cursor();
         
-        let curr_line = self.lines.get_mut(self.target_line).expect("should never index outside of line vector");
-        let curr_line_suffix: String = curr_line.drain(self.target_char, curr_line.length()).collect();
-        self.lines.insert(self.target_line + 1, UnicodeString::from(curr_line_suffix.as_str()));
-        self.target_char = 0;
-        self.target_line += 1;
+        let curr_line = self.lines.get_mut(self.local_cursor_pos.1).expect("should never index outside of line vector");
+        let curr_line_suffix: String = curr_line.drain(self.local_cursor_pos.0, curr_line.length()).collect();
+        self.lines.insert(self.local_cursor_pos.1 + 1, UnicodeString::from(curr_line_suffix.as_str()));
+        self.move_target_right(area);
     }
 
-    pub fn to_text(&self) -> Text {
+    pub fn to_text(&self, area: Rect) -> Text {
+        let first_line_idx = self.viewport_offset.1;
+        let last_line_idx = if area.height as usize + self.viewport_offset.1 > self.lines.len() {
+            self.lines.len()
+        } else {
+            area.height as usize + self.viewport_offset.1
+        };
+
         let mut lines_spans = Vec::new();
-        for line in &self.lines {
-            lines_spans.push(Spans::from(line.as_str()));
+        for line in &self.lines[first_line_idx..last_line_idx] {
+            let line_slice = &line.as_str()[self.viewport_offset.0..];
+            lines_spans.push(Spans::from(line_slice));
         }
         return Text::from(lines_spans);
     }
 
     pub fn move_target_up(&mut self) {
-        if self.target_line > 0 {
-            self.target_line -= 1;
+        if self.local_cursor_pos.1 > 0 {
+            self.local_cursor_pos.1 -= 1;
+            if self.global_cursor_pos.1 > 0 {
+                self.global_cursor_pos.1 -= 1;
+            } else {
+                self.viewport_offset.1 -= 1;
+            }
         }
     }
 
-    pub fn move_target_down(&mut self) {
-        if self.target_line < self.lines.len() - 1 {
-            self.target_line += 1;
+    pub fn move_target_down(&mut self, area: Rect) {
+        if self.local_cursor_pos.1 < self.lines.len() - 1 {
+            self.local_cursor_pos.1 += 1;
+            if self.global_cursor_pos.1 < area.height - 1 {
+                self.global_cursor_pos.1 += 1;
+            } else {
+                self.viewport_offset.1 += 1;
+            }
         }
     }
 
-    pub fn move_target_left(&mut self) {
-        self.target_char = self.clamped_target_char();
-        if self.target_char > 0 {
-            self.target_char -= 1;
+    pub fn move_target_left(&mut self, area: Rect) {
+        // TODO: need to clamp global_cursor_pos.0 incase area size changes
+        if self.local_cursor_pos.0 > 0 {
+            self.local_cursor_pos.0 -= 1;
+            if self.global_cursor_pos.0 > 0 {
+                self.global_cursor_pos.0 -= 1;
+            } else {
+                self.viewport_offset.0 -= 1;
+            }
+        } else if self.local_cursor_pos.1 > 0 {
+            let prev_line = self.lines.get(self.local_cursor_pos.1 - 1)
+                .expect("should never index outside of lines vector");
+
+            self.global_cursor_pos.0 = area.width - 1; // TODO: fix to the end of the line
+            self.local_cursor_pos.0 = prev_line.length();
+            self.move_target_up();
         }
     }
 
-    pub fn move_target_right(&mut self) {
-        let curr_line = self.lines.get(self.target_line).expect("should never index outside of line vector");
-        if self.target_char < curr_line.length() {
-            self.target_char += 1;
+    pub fn move_target_right(&mut self, area: Rect) {
+        let curr_line = self.lines.get(self.local_cursor_pos.1)
+            .expect("should never index outside of lines vector");
+
+        // TODO: need to clamp global_cursor_pos.0 incase area size changes
+        if self.local_cursor_pos.0 < curr_line.length() {
+            self.local_cursor_pos.0 += 1;
+            if self.global_cursor_pos.0 < area.width - 1 {
+                self.global_cursor_pos.0 += 1;
+            } else {
+                self.viewport_offset.0 += 1;
+            }
+        } else if self.local_cursor_pos.1 < self.lines.len() - 1 {
+            self.move_target_down(area);
+            self.local_cursor_pos.0 = 0;
+            self.global_cursor_pos.0 = 0;
+            self.viewport_offset.0 = 0;
+        }
+    }
+
+    // Getters
+
+    pub fn global_cursor_pos(&self) -> (u16, u16) {
+        return self.global_cursor_pos;
+    }
+
+    fn clamped_local_cursor(&self) -> (usize, usize) {
+        let curr_line = self.lines.get(self.local_cursor_pos.1).expect("should never index outside of line vector");
+
+        if self.local_cursor_pos.0 > curr_line.length() {
+            return (curr_line.length(), self.local_cursor_pos.1);
+        } else {
+            return self.local_cursor_pos;
         }
     }
 }
