@@ -5,7 +5,6 @@ use super::unicode::UnicodeString;
 pub struct OpenFile {
     name: Option<UnicodeString>,
     lines: Vec<UnicodeString>,
-    global_cursor_pos: (u16, u16),
     local_cursor_pos: (usize, usize),
     viewport_offset: (usize, usize),
 }
@@ -15,7 +14,6 @@ impl OpenFile {
         return Self {
             name: None,
             lines: vec![UnicodeString::new()],
-            global_cursor_pos: (0, 0),
             local_cursor_pos: (0, 0),
             viewport_offset: (0, 0),
         };
@@ -64,7 +62,10 @@ impl OpenFile {
         let curr_line = self.lines.get_mut(self.local_cursor_pos.1).expect("should never index outside of line vector");
         let curr_line_suffix: String = curr_line.drain(self.local_cursor_pos.0, curr_line.length()).collect();
         self.lines.insert(self.local_cursor_pos.1 + 1, UnicodeString::from(curr_line_suffix.as_str()));
-        self.move_target_right(area);
+
+        self.move_target_down(area);
+        self.local_cursor_pos.0 = 0;
+        self.viewport_offset.0 = 0;
     }
 
     pub fn to_text(&self, area: Rect) -> Text {
@@ -77,77 +78,67 @@ impl OpenFile {
 
         let mut lines_spans = Vec::new();
         for line in &self.lines[first_line_idx..last_line_idx] {
-            let line_slice = &line.as_str()[self.viewport_offset.0..];
-            lines_spans.push(Spans::from(line_slice));
+            if line.length() >= self.viewport_offset.0 {
+                let line_slice = &line.as_str()[self.viewport_offset.0..];
+                lines_spans.push(Spans::from(line_slice));
+            }
         }
         return Text::from(lines_spans);
     }
 
     pub fn move_target_up(&mut self) {
+        let global_cursor_pos = self.global_cursor_pos();
+
         if self.local_cursor_pos.1 > 0 {
             self.local_cursor_pos.1 -= 1;
-            if self.global_cursor_pos.1 > 0 {
-                self.global_cursor_pos.1 -= 1;
-            } else {
+            if global_cursor_pos.1 == 0 {
                 self.viewport_offset.1 -= 1;
             }
         }
     }
 
     pub fn move_target_down(&mut self, area: Rect) {
+        let global_cursor_pos = self.global_cursor_pos();
+
         if self.local_cursor_pos.1 < self.lines.len() - 1 {
             self.local_cursor_pos.1 += 1;
-            if self.global_cursor_pos.1 < area.height - 1 {
-                self.global_cursor_pos.1 += 1;
-            } else {
+            if global_cursor_pos.1 >= area.height - 1 { // Should only be more than that if area is resized
                 self.viewport_offset.1 += 1;
             }
         }
     }
 
     pub fn move_target_left(&mut self, area: Rect) {
-        // TODO: need to clamp global_cursor_pos.0 incase area size changes
+        let global_cursor_pos = self.global_cursor_pos();
+
         if self.local_cursor_pos.0 > 0 {
             self.local_cursor_pos.0 -= 1;
-            if self.global_cursor_pos.0 > 0 {
-                self.global_cursor_pos.0 -= 1;
-            } else {
+            if global_cursor_pos.0 == 0 {
                 self.viewport_offset.0 -= 1;
             }
-        } else if self.local_cursor_pos.1 > 0 {
-            let prev_line = self.lines.get(self.local_cursor_pos.1 - 1)
-                .expect("should never index outside of lines vector");
-
-            self.global_cursor_pos.0 = area.width - 1; // TODO: fix to the end of the line
-            self.local_cursor_pos.0 = prev_line.length();
-            self.move_target_up();
         }
     }
 
     pub fn move_target_right(&mut self, area: Rect) {
         let curr_line = self.lines.get(self.local_cursor_pos.1)
             .expect("should never index outside of lines vector");
+        let global_cursor_pos = self.global_cursor_pos();
 
-        // TODO: need to clamp global_cursor_pos.0 incase area size changes
         if self.local_cursor_pos.0 < curr_line.length() {
             self.local_cursor_pos.0 += 1;
-            if self.global_cursor_pos.0 < area.width - 1 {
-                self.global_cursor_pos.0 += 1;
-            } else {
+            if global_cursor_pos.0 >= area.width - 1 { // Should only be more than that if area is resized
                 self.viewport_offset.0 += 1;
             }
-        } else if self.local_cursor_pos.1 < self.lines.len() - 1 {
-            self.move_target_down(area);
-            self.local_cursor_pos.0 = 0;
-            self.global_cursor_pos.0 = 0;
-            self.viewport_offset.0 = 0;
         }
     }
 
     // Getters
 
     pub fn global_cursor_pos(&self) -> (u16, u16) {
-        return self.global_cursor_pos;
+        let mut global_cursor_pos: (u16, u16) = (0, 0);
+        global_cursor_pos.0 = (self.local_cursor_pos.0 - self.viewport_offset.0) as u16;
+        global_cursor_pos.1 = (self.local_cursor_pos.1 - self.viewport_offset.1) as u16;
+        return global_cursor_pos;
     }
 
     fn clamped_local_cursor(&self) -> (usize, usize) {
