@@ -1,4 +1,4 @@
-use std::string::Drain;
+use std::{string::Drain, ops::{Index, RangeFrom}, slice::SliceIndex};
 
 pub struct UnicodeString {
     inner_string: String,
@@ -173,5 +173,18 @@ impl UnicodeString {
         }
         
         return true;
+    }
+}
+
+impl Index<RangeFrom<usize>> for UnicodeString {
+    type Output = str;
+
+    fn index(&self, idx: RangeFrom<usize>) -> &Self::Output {
+        let inner_idx = if idx.start == self.length {
+            self.inner_string.len()
+        } else {
+            self.inner_indices[idx.start]
+        };
+        return &self.inner_string[inner_idx..];
     }
 }

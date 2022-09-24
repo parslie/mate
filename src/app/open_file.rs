@@ -9,6 +9,10 @@ pub struct OpenFile {
     viewport_offset: (usize, usize),
 }
 
+// TODO: when changing local_cursor_pos, make sure viewport_offset is <= to it
+//       this needs to be done in write_character, remove_character, and break_line
+//       preferably via a better clamped_local_cursor function
+// TODO: clamp global_cursor_pos horizontally
 impl OpenFile {
     pub fn new() -> Self {
         return Self {
@@ -78,10 +82,12 @@ impl OpenFile {
 
         let mut lines_spans = Vec::new();
         for line in &self.lines[first_line_idx..last_line_idx] {
-            if line.length() >= self.viewport_offset.0 {
-                let line_slice = &line.as_str()[self.viewport_offset.0..];
-                lines_spans.push(Spans::from(line_slice));
-            }
+            let line_slice = if line.length() >= self.viewport_offset.0 {
+                &line[self.viewport_offset.0..]
+            } else {
+                ""
+            };
+            lines_spans.push(Spans::from(line_slice));
         }
         return Text::from(lines_spans);
     }
