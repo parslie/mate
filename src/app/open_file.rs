@@ -40,8 +40,11 @@ impl OpenFile {
                     curr_line.remove(self.local_cursor_pos.0 - 1);
                     self.move_target_left(area);
                 } else if self.local_cursor_pos.1 > 0 {
-                    self.move_target_left(area);
-                    let curr_line = self.lines.remove(self.local_cursor_pos.1 + 1);
+                    let curr_line = self.lines.remove(self.local_cursor_pos.1);
+
+                    self.move_target_up();
+                    self.move_target_to_end_of_line(area);
+
                     let prev_line = self.lines.get_mut(self.local_cursor_pos.1).expect("should never index outside of line vector");
                     prev_line.push_str(curr_line.as_str());
                 }
@@ -135,6 +138,13 @@ impl OpenFile {
             if global_cursor_pos.0 >= area.width - 1 { // Should only be more than that if area is resized
                 self.viewport_offset.0 += 1;
             }
+        }
+    }
+
+    pub fn move_target_to_end_of_line(&mut self, area: Rect) {
+        let curr_line_len = self.lines.get(self.local_cursor_pos.1).expect("should never index outside of line vector").length();
+        while self.local_cursor_pos.0 < curr_line_len {
+            self.move_target_right(area); // TODO: implement faster approach
         }
     }
 
