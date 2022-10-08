@@ -96,7 +96,7 @@ impl OpenFile {
     }
 
     pub fn move_target_up(&mut self) {
-        let global_cursor_pos = self.global_cursor_pos();
+        let global_cursor_pos = self.global_cursor();
 
         if self.local_cursor_pos.1 > 0 {
             self.local_cursor_pos.1 -= 1;
@@ -107,7 +107,7 @@ impl OpenFile {
     }
 
     pub fn move_target_down(&mut self, area: Rect) {
-        let global_cursor_pos = self.global_cursor_pos();
+        let global_cursor_pos = self.global_cursor();
 
         if self.local_cursor_pos.1 < self.lines.len() - 1 {
             self.local_cursor_pos.1 += 1;
@@ -118,7 +118,7 @@ impl OpenFile {
     }
 
     pub fn move_target_left(&mut self, area: Rect) {
-        let global_cursor_pos = self.global_cursor_pos();
+        let global_cursor_pos = self.global_cursor();
 
         if self.local_cursor_pos.0 > 0 {
             self.local_cursor_pos.0 -= 1;
@@ -131,7 +131,7 @@ impl OpenFile {
     pub fn move_target_right(&mut self, area: Rect) {
         let curr_line = self.lines.get(self.local_cursor_pos.1)
             .expect("should never index outside of lines vector");
-        let global_cursor_pos = self.global_cursor_pos();
+        let global_cursor_pos = self.global_cursor();
 
         if self.local_cursor_pos.0 < curr_line.length() {
             self.local_cursor_pos.0 += 1;
@@ -156,11 +156,22 @@ impl OpenFile {
 
     // Getters
 
-    pub fn global_cursor_pos(&self) -> (u16, u16) {
+    pub fn global_cursor(&self) -> (u16, u16) {
         let mut global_cursor_pos: (u16, u16) = (0, 0);
         global_cursor_pos.0 = (self.local_cursor_pos.0 - self.viewport_offset.0) as u16;
         global_cursor_pos.1 = (self.local_cursor_pos.1 - self.viewport_offset.1) as u16;
         return global_cursor_pos;
+    }
+
+    pub fn clamped_global_cursor(&self) -> (u16, u16) {
+        let curr_line_len = self.lines.get(self.local_cursor_pos.1).expect("should never index outside of line vector").length();
+        if self.local_cursor_pos.0 > curr_line_len {
+            let (global_x, global_y) = self.global_cursor();
+            let diff = (self.local_cursor_pos.0 - curr_line_len) as u16;
+            return (global_x - diff, global_y);
+        } else {
+            return self.global_cursor();
+        }
     }
 
     fn clamped_local_cursor(&self) -> (usize, usize) {

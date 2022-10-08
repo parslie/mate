@@ -12,8 +12,7 @@ fn render<B: Backend>(frame: &mut Frame<B>, open_file: &OpenFile) {
     let paragraph = Paragraph::new(open_file.to_text(frame.size()));
     frame.render_widget(paragraph, frame.size());
 
-    // TODO: implement proper cursor pos after implementing viewport
-    let (cursor_x, cursor_y) = open_file.global_cursor_pos();
+    let (cursor_x, cursor_y) = open_file.clamped_global_cursor();
     frame.set_cursor(cursor_x, cursor_y);
 }
 
