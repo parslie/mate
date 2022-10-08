@@ -148,6 +148,12 @@ impl OpenFile {
         }
     }
 
+    pub fn move_target_to_start_of_line(&mut self, area: Rect) {
+        while self.local_cursor_pos.0 > 0 {
+            self.move_target_left(area); // TODO: implement faster approach
+        }
+    }
+
     // Getters
 
     pub fn global_cursor_pos(&self) -> (u16, u16) {

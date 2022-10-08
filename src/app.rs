@@ -39,6 +39,10 @@ pub fn run<B: Backend>(terminal: &mut Terminal<B>) -> io::Result<()> {
                     curr_open_file.move_target_left(area);
                 } else if key.code == KeyCode::Right {
                     curr_open_file.move_target_right(area);
+                } else if key.code == KeyCode::End {
+                    curr_open_file.move_target_to_end_of_line(area);
+                } else if key.code == KeyCode::Home {
+                    curr_open_file.move_target_to_start_of_line(area);
                 }
 
                 else if key.code == KeyCode::Enter {
