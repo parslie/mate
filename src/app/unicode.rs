@@ -1,5 +1,6 @@
-use std::{string::Drain, ops::{Index, RangeFrom}, slice::SliceIndex};
+use std::{string::Drain, ops::{Index, RangeFrom}};
 
+#[derive(Clone)]
 pub struct UnicodeString {
     inner_string: String,
     length: usize,

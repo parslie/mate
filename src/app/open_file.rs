@@ -1,9 +1,10 @@
 use tui::{text::{Text, Spans}, layout::Rect};
 
 use super::unicode::UnicodeString;
+use super::file_path::FilePath;
 
 pub struct OpenFile {
-    name: Option<UnicodeString>,
+    pub path: FilePath,
     lines: Vec<UnicodeString>,
     local_cursor_pos: (usize, usize),
     viewport_offset: (usize, usize),
@@ -12,11 +13,10 @@ pub struct OpenFile {
 // TODO: when changing local_cursor_pos, make sure viewport_offset is <= to it
 //       this needs to be done in write_character, remove_character, and break_line
 //       preferably via a better clamped_local_cursor function
-// TODO: clamp global_cursor_pos horizontally
 impl OpenFile {
     pub fn new() -> Self {
         return Self {
-            name: None,
+            path: FilePath::new(),
             lines: vec![UnicodeString::new()],
             local_cursor_pos: (0, 0),
             viewport_offset: (0, 0),
@@ -73,26 +73,6 @@ impl OpenFile {
         self.move_target_down(area);
         self.local_cursor_pos.0 = 0;
         self.viewport_offset.0 = 0;
-    }
-
-    pub fn to_text(&self, area: Rect) -> Text {
-        let first_line_idx = self.viewport_offset.1;
-        let last_line_idx = if area.height as usize + self.viewport_offset.1 > self.lines.len() {
-            self.lines.len()
-        } else {
-            area.height as usize + self.viewport_offset.1
-        };
-
-        let mut lines_spans = Vec::new();
-        for line in &self.lines[first_line_idx..last_line_idx] {
-            let line_slice = if line.length() >= self.viewport_offset.0 {
-                &line[self.viewport_offset.0..]
-            } else {
-                ""
-            };
-            lines_spans.push(Spans::from(line_slice));
-        }
-        return Text::from(lines_spans);
     }
 
     pub fn move_target_up(&mut self) {
@@ -182,5 +162,25 @@ impl OpenFile {
         } else {
             return self.local_cursor_pos;
         }
+    }
+
+    pub fn to_text(&self, area: Rect) -> Text {
+        let first_line_idx = self.viewport_offset.1;
+        let last_line_idx = if area.height as usize + self.viewport_offset.1 > self.lines.len() {
+            self.lines.len()
+        } else {
+            area.height as usize + self.viewport_offset.1
+        };
+
+        let mut lines_spans = Vec::new();
+        for line in &self.lines[first_line_idx..last_line_idx] {
+            let line_slice = if line.length() >= self.viewport_offset.0 {
+                &line[self.viewport_offset.0..]
+            } else {
+                ""
+            };
+            lines_spans.push(Spans::from(line_slice));
+        }
+        return Text::from(lines_spans);
     }
 }
