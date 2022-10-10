@@ -10,9 +10,6 @@ fn main() -> io::Result<()> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-    #[cfg(debug_assertions)]
-    app::test();
-
     enable_raw_mode()?;
     execute!(terminal.backend_mut(), EnterAlternateScreen)?;
 
