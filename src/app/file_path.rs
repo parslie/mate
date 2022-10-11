@@ -22,7 +22,35 @@ impl FilePath {
 
     // // //
 
-    // TODO: actions
+    pub fn write_character(&mut self, ch: char) {
+        self.path.insert(self.local_cursor_pos, ch);
+        self.local_cursor_pos += 1;
+    }
+
+    pub fn remove_character_before(&mut self) {
+        if self.local_cursor_pos > 0 {
+            self.path.remove(self.local_cursor_pos - 1);
+            self.local_cursor_pos -= 1;
+        }
+    }
+
+    pub fn remove_character_after(&mut self) {
+        if self.local_cursor_pos < self.path.length() {
+            self.path.remove(self.local_cursor_pos);
+        }
+    }
+
+    pub fn move_cursor_left(&mut self) {
+        if self.local_cursor_pos > 0 {
+            self.local_cursor_pos -= 1;
+        }
+    }
+
+    pub fn move_cursor_right(&mut self) {
+        if self.local_cursor_pos < self.path.length() {
+            self.local_cursor_pos += 1;
+        }
+    }
 
     // // //
 
@@ -30,8 +58,8 @@ impl FilePath {
         if self.local_cursor_pos < self.viewport_offset {
             let diff = self.viewport_offset - self.local_cursor_pos;
             self.viewport_offset -= diff;
-        } else if self.local_cursor_pos > area_width as usize - 1 {
-            let diff = self.local_cursor_pos - (area_width as usize - 1);
+        } else if (self.local_cursor_pos - self.viewport_offset) > (area_width - 1) as usize {
+            let diff = (self.local_cursor_pos - self.viewport_offset) - (area_width - 1) as usize;
             self.viewport_offset += diff;
         }
     }

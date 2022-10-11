@@ -21,9 +21,102 @@ impl OpenFile {
 
     // // //
 
-    // TODO: actions
+    pub fn write_character(&mut self, ch: char) {
+        self.local_cursor_pos.0 = self.clamped_local_cursor();
+        let char_idx = self.local_cursor_pos.0;
+
+        let line = self.get_line_mut();
+        line.insert(char_idx, ch);
+        self.local_cursor_pos.0 += 1;
+    }
+
+    pub fn remove_character_before(&mut self) {
+        self.local_cursor_pos.0 = self.clamped_local_cursor();
+
+        if self.local_cursor_pos.0 > 0 {
+            let char_idx = self.local_cursor_pos.0 - 1;
+            let line = self.get_line_mut();
+            line.remove(char_idx);
+            self.local_cursor_pos.0 -= 1;
+        } else if self.local_cursor_pos.1 > 0 {
+            let curr_line = self.lines.remove(self.local_cursor_pos.1);
+            self.local_cursor_pos.1 -= 1;
+            let prev_line = self.get_line_mut();
+            prev_line.push_str(curr_line.as_str());
+            self.local_cursor_pos.0 = prev_line.length() - curr_line.length();
+        }
+    }
+
+    pub fn remove_character_after(&mut self) {
+        self.local_cursor_pos.0 = self.clamped_local_cursor();
+
+        if self.local_cursor_pos.0 < self.get_line().length() {
+            let char_idx = self.local_cursor_pos.0;
+            let line = self.get_line_mut();
+            line.remove(char_idx);
+        } else if self.local_cursor_pos.1 < self.lines.len() - 1 {
+            let next_line = self.lines.remove(self.local_cursor_pos.1 + 1);
+            let curr_line = self.get_line_mut();
+            curr_line.push_str(next_line.as_str());
+        }
+    }
+
+    pub fn break_line(&mut self) {
+        self.local_cursor_pos.0 = self.clamped_local_cursor();
+        let char_idx = self.local_cursor_pos.0;
+
+        let curr_line = self.get_line_mut();
+        let curr_line_suffix: String = curr_line.drain(char_idx, curr_line.length()).collect();
+        self.lines.insert(self.local_cursor_pos.1 + 1, UnicodeString::from(curr_line_suffix.as_str()));
+
+        self.local_cursor_pos.0 = 0;
+        self.local_cursor_pos.1 += 1;
+    }
+
+    pub fn move_cursor_up(&mut self) {
+        if self.local_cursor_pos.1 > 0 {
+            self.local_cursor_pos.1 -= 1;
+        }
+    }
+
+    pub fn move_cursor_down(&mut self) {
+        if self.local_cursor_pos.1 < self.lines.len() - 1 {
+            self.local_cursor_pos.1 += 1;
+        }
+    }
+
+    pub fn move_cursor_left(&mut self) {
+        self.local_cursor_pos.0 = self.clamped_local_cursor();
+        if self.local_cursor_pos.0 > 0 {
+            self.local_cursor_pos.0 -= 1;
+        }
+    }
+
+    pub fn move_cursor_right(&mut self) {
+        self.local_cursor_pos.0 = self.clamped_local_cursor();
+        if self.local_cursor_pos.0 < self.get_line().length() {
+            self.local_cursor_pos.0 += 1;
+        }
+    }
 
     // // //
+
+    fn get_line_mut(&mut self) -> &mut UnicodeString {
+        return self.lines.get_mut(self.local_cursor_pos.1).expect("should never index outside of line vector");
+    }
+
+    fn get_line(&self) -> &UnicodeString {
+        return self.lines.get(self.local_cursor_pos.1).expect("should never index outside of line vector");
+    }
+
+    fn clamped_local_cursor(&self) -> usize {
+        let line = self.get_line();
+        if self.local_cursor_pos.0 > line.length() {
+            return line.length();
+        } else {
+            return self.local_cursor_pos.0;
+        }
+    }
 
     fn adjust_viewport(&mut self, area_rect: Rect) {
         if self.local_cursor_pos.0 < self.viewport_offset.0 {
@@ -45,7 +138,7 @@ impl OpenFile {
 
     fn global_cursor_pos(&self, area_rect: Rect) -> (u16, u16) {
         return (
-            area_rect.x + (self.local_cursor_pos.0 - self.viewport_offset.0) as u16,
+            area_rect.x + (self.clamped_local_cursor() - self.viewport_offset.0) as u16,
             area_rect.y + (self.local_cursor_pos.1 - self.viewport_offset.1) as u16
         );
     }
