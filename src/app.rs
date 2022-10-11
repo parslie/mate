@@ -3,10 +3,11 @@ use std::{io::{self, Write}, time::Duration, fs::{self, File}, path::Path};
 use crossterm::event::{self, Event, KeyModifiers, KeyCode, KeyEvent};
 use tui::{Terminal, backend::Backend, Frame};
 
-use self::{open_file::OpenFile, file_path::FilePath};
+use self::{open_file::OpenFile, file_path::FilePath, prompt::render_prompt};
 
 mod open_file;
 mod file_path;
+mod prompt;
 mod unicode;
 
 enum AppState { Editing, Saving, Overwriting, Quitting }
@@ -17,11 +18,15 @@ struct AppData {
     state: AppState,
 }
 
+// TODO: consider separating rendering & data/functionality
+
 fn render<B: Backend>(frame: &mut Frame<B>, app_data: &mut AppData) {
     match app_data.state {
         AppState::Overwriting => {
+            let file_name = app_data.file_path.as_str().split('/').last().expect("should not be empty while overwriting");
+
             app_data.open_file.render(frame);
-            // TODO: create overwrite widget
+            render_prompt(frame, " Warning! ", format!("Are you sure you want to overwrite '{}'?", file_name).as_str());
         },
         AppState::Saving => {
             app_data.open_file.render(frame);
@@ -59,7 +64,7 @@ fn edit_events(key: &KeyEvent, app_data: &mut AppData) {
         app_data.open_file.move_cursor_right();
     }
 }
- // TODO: create overwrite_events
+
 fn save_events(key: &KeyEvent, app_data: &mut AppData) {
     if key.modifiers == KeyModifiers::CONTROL && key.code == KeyCode::Char('c') {
         app_data.state = AppState::Editing;
@@ -81,6 +86,16 @@ fn save_events(key: &KeyEvent, app_data: &mut AppData) {
         app_data.file_path.move_cursor_left();
     } else if key.code == KeyCode::Right {
         app_data.file_path.move_cursor_right();
+    }
+}
+
+fn overwrite_events(key: &KeyEvent, app_data: &mut AppData) {
+    if key.modifiers == KeyModifiers::CONTROL && key.code == KeyCode::Char('c') {
+        app_data.state = AppState::Saving;
+    } else if key.code == KeyCode::Enter {
+        if let Err(_error) = save(app_data, true) {
+            // TODO: handle errors
+        }
     }
 }
 
@@ -117,7 +132,7 @@ pub fn run<B: Backend>(terminal: &mut Terminal<B>) -> io::Result<()> {
         if event::poll(poll_duration)? {
             if let Event::Key(key) = event::read()? {
                 match app_data.state {
-                    AppState::Overwriting => {}, // TODO: create overwrite_events
+                    AppState::Overwriting => overwrite_events(&key, &mut app_data),
                     AppState::Saving => save_events(&key, &mut app_data),
                     _ => edit_events(&key, &mut app_data),
                 }
