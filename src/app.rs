@@ -9,84 +9,91 @@ mod open_file;
 mod file_path;
 mod unicode;
 
-struct AppState {
+enum AppState { Editing, Saving, Overwriting, Quitting }
+
+struct AppData {
     open_file: OpenFile,
     file_path: FilePath,
-    is_saving: bool,
-    is_quitting: bool,
+    state: AppState,
 }
 
-fn render<B: Backend>(frame: &mut Frame<B>, app_state: &mut AppState) {
-    app_state.open_file.render(frame);
-    if app_state.is_saving {
-        app_state.file_path.render(frame);
+fn render<B: Backend>(frame: &mut Frame<B>, app_data: &mut AppData) {
+    match app_data.state {
+        AppState::Overwriting => {
+            app_data.open_file.render(frame);
+            // TODO: create overwrite widget
+        },
+        AppState::Saving => {
+            app_data.open_file.render(frame);
+            app_data.file_path.render(frame);
+        },
+        _ => app_data.open_file.render(frame),
     }
 }
 
-fn edit_events(key: &KeyEvent, app_state: &mut AppState) {
+fn edit_events(key: &KeyEvent, app_data: &mut AppData) {
     if key.modifiers == KeyModifiers::CONTROL && key.code == KeyCode::Char('c') {
-        app_state.is_quitting = true;
+        app_data.state = AppState::Quitting;
     } else if key.modifiers == KeyModifiers::CONTROL && key.code == KeyCode::Char('s') {
-        app_state.is_saving = true;
-        app_state.file_path = app_state.open_file.path.clone();
+        app_data.state = AppState::Saving;
+        app_data.file_path = app_data.open_file.path.clone();
     } 
     
     else if key.code == KeyCode::Backspace {
-        app_state.open_file.remove_character_before();
+        app_data.open_file.remove_character_before();
     } else if key.code == KeyCode::Delete {
-        app_state.open_file.remove_character_after();
+        app_data.open_file.remove_character_after();
     } else if key.code == KeyCode::Enter {
-        app_state.open_file.break_line();
+        app_data.open_file.break_line();
     } else if let KeyCode::Char(ch) = key.code {
-        app_state.open_file.write_character(ch);
+        app_data.open_file.write_character(ch);
     }
 
     else if key.code == KeyCode::Up {
-        app_state.open_file.move_cursor_up();
+        app_data.open_file.move_cursor_up();
     } else if key.code == KeyCode::Down {
-        app_state.open_file.move_cursor_down();
+        app_data.open_file.move_cursor_down();
     } else if key.code == KeyCode::Left {
-        app_state.open_file.move_cursor_left();
+        app_data.open_file.move_cursor_left();
     } else if key.code == KeyCode::Right {
-        app_state.open_file.move_cursor_right();
+        app_data.open_file.move_cursor_right();
     }
 }
-
-fn save_events(key: &KeyEvent, app_state: &mut AppState) {
+ // TODO: create overwrite_events
+fn save_events(key: &KeyEvent, app_data: &mut AppData) {
     if key.modifiers == KeyModifiers::CONTROL && key.code == KeyCode::Char('c') {
-        app_state.is_saving = false;
+        app_data.state = AppState::Editing;
     } else if key.code == KeyCode::Enter {
-        app_state.is_saving = false;
-
-        if let Err(_error) = save(app_state, false) {
+        if let Err(_error) = save(app_data, false) {
             // TODO: handle errors
         }
     }
 
     else if key.code == KeyCode::Backspace {
-        app_state.file_path.remove_character_before();
+        app_data.file_path.remove_character_before();
     } else if key.code == KeyCode::Delete {
-        app_state.file_path.remove_character_after();
+        app_data.file_path.remove_character_after();
     } else if let KeyCode::Char(ch) = key.code {
-        app_state.file_path.write_character(ch);
+        app_data.file_path.write_character(ch);
     }
 
     else if key.code == KeyCode::Left {
-        app_state.file_path.move_cursor_left();
+        app_data.file_path.move_cursor_left();
     } else if key.code == KeyCode::Right {
-        app_state.file_path.move_cursor_right();
+        app_data.file_path.move_cursor_right();
     }
 }
 
-fn save(app_state: &mut AppState, force_overwrite: bool) -> Result<(), io::Error> {
-    let file_exists = Path::new(app_state.file_path.as_str()).exists();
+fn save(app_data: &mut AppData, force_overwrite: bool) -> Result<(), io::Error> {
+    let file_exists = Path::new(app_data.file_path.as_str()).exists();
 
     if file_exists && force_overwrite || !file_exists {
-        let mut file = File::create(app_state.file_path.as_str())?;
-        file.write_all(app_state.open_file.to_string().as_bytes())?;
-        app_state.open_file.path = app_state.file_path.clone();
+        let mut file = File::create(app_data.file_path.as_str())?;
+        file.write_all(app_data.open_file.to_string().as_bytes())?;
+        app_data.open_file.path = app_data.file_path.clone();
+        app_data.state = AppState::Editing;
     } else if file_exists {
-        // TODO: open "Are you sure?" menu
+        app_data.state = AppState::Overwriting;
     }
 
     return Ok(());
@@ -94,26 +101,25 @@ fn save(app_state: &mut AppState, force_overwrite: bool) -> Result<(), io::Error
 
 pub fn run<B: Backend>(terminal: &mut Terminal<B>) -> io::Result<()> {
     let poll_duration = Duration::from_millis(500);
-    let mut app_state = AppState {
+    let mut app_data = AppData {
         open_file: OpenFile::new(),
         file_path: FilePath::new(),
-        is_saving: false,
-        is_quitting: false,
+        state: AppState::Editing,
     };
 
     loop {
-        terminal.draw(|frame| render(frame, &mut app_state))?;
+        terminal.draw(|frame| render(frame, &mut app_data))?;
 
-        if app_state.is_quitting {
+        if let AppState::Quitting = app_data.state {
             return Ok(()); // TODO: warn about unsaved changes
         }
 
         if event::poll(poll_duration)? {
             if let Event::Key(key) = event::read()? {
-                if app_state.is_saving {
-                    save_events(&key, &mut app_state);
-                } else {
-                    edit_events(&key, &mut app_state);
+                match app_data.state {
+                    AppState::Overwriting => {}, // TODO: create overwrite_events
+                    AppState::Saving => save_events(&key, &mut app_data),
+                    _ => edit_events(&key, &mut app_data),
                 }
             }
         }

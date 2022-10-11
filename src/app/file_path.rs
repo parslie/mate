@@ -84,7 +84,7 @@ impl FilePath {
         block_rect.height = 3;
         let parag_rect = block.inner(block_rect);
 
-        self.adjust_viewport(parag_rect.width as usize); // TODO: test if works
+        self.adjust_viewport(parag_rect.width as usize);
         let global_cursor_pos = parag_rect.x + (self.local_cursor_pos - self.viewport_offset) as u16;
 
         // Unlike OpenFile lines, should never be able to index outside of length

@@ -172,7 +172,7 @@ impl OpenFile {
             parag_rect.height as usize + self.viewport_offset.1
         };
 
-        self.adjust_viewport(parag_rect); // TODO: test if works
+        self.adjust_viewport(parag_rect);
         let global_cursor_pos = self.global_cursor_pos(parag_rect);
 
         let mut spans_vec = Vec::new();
