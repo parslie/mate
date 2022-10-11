@@ -24,6 +24,26 @@ fn edit_events(key: &KeyEvent, open_file: &mut OpenFile, file_path: &mut FilePat
     } else if key.modifiers == KeyModifiers::CONTROL && key.code == KeyCode::Char('s') {
         *is_saving = true;
         *file_path = open_file.path.clone();
+    } 
+    
+    else if key.code == KeyCode::Backspace {
+        open_file.remove_character_before();
+    } else if key.code == KeyCode::Delete {
+        open_file.remove_character_after();
+    } else if key.code == KeyCode::Enter {
+        open_file.break_line();
+    } else if let KeyCode::Char(ch) = key.code {
+        open_file.write_character(ch);
+    }
+
+    else if key.code == KeyCode::Up {
+        open_file.move_cursor_up();
+    } else if key.code == KeyCode::Down {
+        open_file.move_cursor_down();
+    } else if key.code == KeyCode::Left {
+        open_file.move_cursor_left();
+    } else if key.code == KeyCode::Right {
+        open_file.move_cursor_right();
     }
 }
 
@@ -31,8 +51,23 @@ fn save_events(key: &KeyEvent, open_file: &mut OpenFile, file_path: &mut FilePat
     if key.modifiers == KeyModifiers::CONTROL && key.code == KeyCode::Char('c') {
         *is_saving = false;
     } else if key.code == KeyCode::Enter {
+        *is_saving = false;
         open_file.path = file_path.clone();
         // TODO: save open file lines to path (create directories if necessary)
+    }
+
+    else if key.code == KeyCode::Backspace {
+        file_path.remove_character_before();
+    } else if key.code == KeyCode::Delete {
+        file_path.remove_character_after();
+    } else if let KeyCode::Char(ch) = key.code {
+        file_path.write_character(ch);
+    }
+
+    else if key.code == KeyCode::Left {
+        file_path.move_cursor_left();
+    } else if key.code == KeyCode::Right {
+        file_path.move_cursor_right();
     }
 }
 
