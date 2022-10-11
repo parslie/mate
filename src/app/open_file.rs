@@ -1,3 +1,5 @@
+use std::{fs::File, io::{self, Write}};
+
 use tui::{backend::Backend, Frame, widgets::{Block, Borders, Paragraph}, text::{Spans, Text}, layout::Rect};
 
 use super::{file_path::FilePath, unicode::UnicodeString};
@@ -141,6 +143,17 @@ impl OpenFile {
             area_rect.x + (self.clamped_local_cursor() - self.viewport_offset.0) as u16,
             area_rect.y + (self.local_cursor_pos.1 - self.viewport_offset.1) as u16
         );
+    }
+
+    pub fn to_string(&self) -> String {
+        let mut output = String::new();
+        for (i, line) in self.lines.iter().enumerate() {
+            output.push_str(line.as_str());
+            if i < self.lines.len() - 1 {
+                output.push('\n');
+            }
+        }
+        return output;
     }
 
     // // //

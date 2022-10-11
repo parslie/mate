@@ -1,4 +1,4 @@
-use std::{io, time::Duration};
+use std::{io::{self, Write}, time::Duration, fs::{self, File}, path::Path};
 
 use crossterm::event::{self, Event, KeyModifiers, KeyCode, KeyEvent};
 use tui::{Terminal, backend::Backend, Frame};
@@ -57,8 +57,10 @@ fn save_events(key: &KeyEvent, app_state: &mut AppState) {
         app_state.is_saving = false;
     } else if key.code == KeyCode::Enter {
         app_state.is_saving = false;
-        app_state.open_file.path = app_state.file_path.clone();
-        // TODO: save open file lines to path (create directories if necessary)
+
+        if let Err(_error) = save(app_state, false) {
+            // TODO: handle errors
+        }
     }
 
     else if key.code == KeyCode::Backspace {
@@ -74,6 +76,20 @@ fn save_events(key: &KeyEvent, app_state: &mut AppState) {
     } else if key.code == KeyCode::Right {
         app_state.file_path.move_cursor_right();
     }
+}
+
+fn save(app_state: &mut AppState, force_overwrite: bool) -> Result<(), io::Error> {
+    let file_exists = Path::new(app_state.file_path.as_str()).exists();
+
+    if file_exists && force_overwrite || !file_exists {
+        let mut file = File::create(app_state.file_path.as_str())?;
+        file.write_all(app_state.open_file.to_string().as_bytes())?;
+        app_state.open_file.path = app_state.file_path.clone();
+    } else if file_exists {
+        // TODO: open "Are you sure?" menu
+    }
+
+    return Ok(());
 }
 
 pub fn run<B: Backend>(terminal: &mut Terminal<B>) -> io::Result<()> {

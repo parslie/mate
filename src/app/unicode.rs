@@ -121,3 +121,10 @@ impl Index<RangeFrom<usize>> for UnicodeString {
         return &self.inner_string[inner_idx..];
     }
 }
+
+impl PartialEq for UnicodeString {
+    fn eq(&self, other: &Self) -> bool {
+        return self.inner_string == other.inner_string;
+        
+    }
+}

@@ -64,6 +64,10 @@ impl FilePath {
         }
     }
 
+    pub fn as_str(&self) -> &str {
+        return self.path.as_str();
+    }
+
     // // //
 
     pub fn render<B: Backend>(&mut self, frame: &mut Frame<B>) {
@@ -90,5 +94,11 @@ impl FilePath {
         frame.render_widget(parag, parag_rect);
         frame.render_widget(block, block_rect);
         frame.set_cursor(global_cursor_pos, parag_rect.y);
+    }
+}
+
+impl PartialEq for FilePath {
+    fn eq(&self, other: &Self) -> bool {
+        return self.path == other.path;
     }
 }
