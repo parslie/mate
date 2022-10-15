@@ -3,7 +3,7 @@ use tui::{layout::Rect, backend::Backend, Frame, text::{Span, Spans}, widgets::P
 use super::unicode::UnicodeString;
 
 pub struct Prompt {
-    instruction: UnicodeString,
+    prompt: UnicodeString,
     answer: UnicodeString,
     local_cursor: usize,
     viewport_offset: usize,
@@ -12,7 +12,7 @@ pub struct Prompt {
 impl Prompt {
     pub fn new(instruction: &str) -> Self {
         return Self {
-            instruction: UnicodeString::from(instruction),
+            prompt: UnicodeString::from(instruction),
             answer: UnicodeString::new(),
             local_cursor: 0,
             viewport_offset: 0,
@@ -79,13 +79,13 @@ impl Prompt {
 
     pub fn global_cursor(&self, rect: Rect) -> (u16, u16) {
         return (
-            rect.x + (self.local_cursor - self.viewport_offset + self.instruction.length() + 2) as u16, // +2 to account for ": "
+            rect.x + (self.local_cursor - self.viewport_offset + self.prompt.length() + 2) as u16, // +2 to account for ": "
             rect.y
         );
     }
 
     pub fn render<B: Backend>(&self, frame: &mut Frame<B>, rect: Rect) {
-        let mut span_vec = vec![Span::from(format!("{}: ", self.instruction.as_str()))];
+        let mut span_vec = vec![Span::from(format!("{}: ", self.prompt.as_str()))];
 
         if self.answer.length() >= self.viewport_offset {
             span_vec.push(Span::from(&self.answer[self.viewport_offset..]));

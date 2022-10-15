@@ -6,6 +6,8 @@ use super::{Data, State};
 
 mod save;
 
+// TODO: add handle_key_event function to File and Prompt
+
 fn handle_edit_key(key: KeyEvent, data: &mut Data) {
     if key.modifiers == KeyModifiers::CONTROL {
         if key.code == KeyCode::Char('c') {
@@ -25,6 +27,7 @@ fn handle_edit_key(key: KeyEvent, data: &mut Data) {
             data.file.move_cursor_right();
         }
 
+        // TODO: add tabs
         else if key.code == KeyCode::Backspace {
             data.file.remove_character_before();
         } else if key.code == KeyCode::Delete {
