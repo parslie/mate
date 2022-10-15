@@ -18,6 +18,7 @@ pub struct Data {
     state: State,
     file: File,
     save_prompt: Prompt,
+    overwrite_prompt: Prompt,
 }
 
 pub fn run<B: Backend>(terminal: &mut Terminal<B>) -> io::Result<()> {
@@ -26,6 +27,7 @@ pub fn run<B: Backend>(terminal: &mut Terminal<B>) -> io::Result<()> {
         state: State::Editing,
         file: File::new(),
         save_prompt: Prompt::new("Enter file path"),
+        overwrite_prompt: Prompt::new("Enter whether you want to overwrite (y/N)"),
     };
 
     while data.state != State::Quitting {

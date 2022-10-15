@@ -29,6 +29,12 @@ pub fn render<B: Backend>(frame: &mut Frame<B>, data: &mut Data) {
             let cursor = data.save_prompt.global_cursor(bar_content_rect);
             frame.set_cursor(cursor.0, cursor.1);
         },
+        State::Overwriting => {
+            data.overwrite_prompt.adjust_viewport(bar_content_rect);
+            data.overwrite_prompt.render(frame, bar_content_rect);
+            let cursor = data.overwrite_prompt.global_cursor(bar_content_rect);
+            frame.set_cursor(cursor.0, cursor.1);
+        },
         _ => (),
     }
 

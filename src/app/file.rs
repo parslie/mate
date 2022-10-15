@@ -37,6 +37,17 @@ impl File {
             return self.local_cursor;
         }
     }
+
+    pub fn to_string(&self) -> String {
+        let mut output = String::new();
+        for (i, line) in self.lines.iter().enumerate() {
+            output.push_str(line.as_str());
+            if i < self.lines.len() - 1 {
+                output.push('\n');
+            }
+        }
+        return output;
+    }
     
     // Functionality
     

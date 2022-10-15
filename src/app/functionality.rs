@@ -1,6 +1,10 @@
 use crossterm::event::{Event, KeyEvent, KeyModifiers, KeyCode};
 
+use self::save::save;
+
 use super::{Data, State};
+
+mod save;
 
 fn handle_edit_key(key: KeyEvent, data: &mut Data) {
     if key.modifiers == KeyModifiers::CONTROL {
@@ -54,13 +58,53 @@ fn handle_save_key(key: KeyEvent, data: &mut Data) {
         }
 
         else if key.code == KeyCode::Enter {
-            // TODO: save functionality
+            match save(data, false) {
+                Ok(true) => {
+                    data.state = State::Editing;
+                    data.file.path = data.save_prompt.get_answer().clone();
+                },
+                Ok(false) => data.state = State::Overwriting,
+                Err(error) => panic!("Error on saving file!"), // TODO: handle errors properly
+            }
         } 
     }
 }
 
-fn handle_overwrite_key(_key: KeyEvent, _data: &mut Data) {
+fn handle_overwrite_key(key: KeyEvent, data: &mut Data) {
+    if key.modifiers == KeyModifiers::CONTROL {
+        if key.code == KeyCode::Char('c') {
+            data.state = State::Saving;
+        }
+    } else {
+        if key.code == KeyCode::Left {
+            data.overwrite_prompt.move_cursor_left();
+        } else if key.code == KeyCode::Right {
+            data.overwrite_prompt.move_cursor_right();
+        }
 
+        else if key.code == KeyCode::Backspace {
+            data.overwrite_prompt.remove_character_before();
+        } else if key.code == KeyCode::Delete {
+            data.overwrite_prompt.remove_character_after();
+        } else if let KeyCode::Char(ch) = key.code {
+            data.overwrite_prompt.write_character(ch);
+        }
+
+        else if key.code == KeyCode::Enter {
+            if data.overwrite_prompt.get_answer().as_str().to_lowercase() == "y" {
+                match save(data, true) {
+                    Ok(true) => { 
+                        data.state = State::Editing;
+                        data.file.path = data.save_prompt.get_answer().clone();
+                    },
+                    Ok(false) => panic!("Did not overwrite file!"), // Should not be possible because of force_overwrite
+                    Err(error) => panic!("Error on overwriting file!"), // TODO: handle errors properly
+                }
+            } else {
+                data.state = State::Saving;
+            }
+        } 
+    }
 }
 
 pub fn handle_event(event: Event, data: &mut Data) {
