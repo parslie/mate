@@ -2,7 +2,7 @@ use crossterm::event::{Event, KeyEvent, KeyModifiers, KeyCode};
 
 use self::save::save;
 
-use super::{Data, State};
+use super::{Data, State, unicode::UnicodeString};
 
 mod save;
 
@@ -66,7 +66,10 @@ fn handle_save_key(key: KeyEvent, data: &mut Data) {
                     data.state = State::Editing;
                     data.file.path = data.save_prompt.get_answer().clone();
                 },
-                Ok(false) => data.state = State::Overwriting,
+                Ok(false) => {
+                    data.state = State::Overwriting;
+                    data.overwrite_prompt.set_answer(&UnicodeString::new());
+                },
                 Err(error) => panic!("Error on saving file!"), // TODO: handle errors properly
             }
         } 
